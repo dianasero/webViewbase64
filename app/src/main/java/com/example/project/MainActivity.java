@@ -5,6 +5,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.webkit.WebView;
 import android.widget.*;
 import android.widget.Toast;
 import java.io.*;
@@ -29,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        WebView myWebView = (WebView) findViewById(R.id.webView);
+        myWebView.loadUrl("http://www.google.com");
     }
     public void funGET() throws IOException {
         ConnectivityManager connMgr = (ConnectivityManager)
