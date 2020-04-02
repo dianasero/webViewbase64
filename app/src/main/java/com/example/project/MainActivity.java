@@ -1,20 +1,15 @@
 package com.example.project;
-
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.os.AsyncTask;
+import android.graphics.*;
+import android.os.*;
+import android.util.*;
+import android.app.*;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.util.Log;
-import android.widget.Toast;
+import android.webkit.*;
+import android.widget.*;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.io.*;
+import java.lang.ref.WeakReference;
+import java.net.*;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -22,101 +17,100 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-//        Toast toast2 =
-//                Toast.makeText(getApplicationContext(),
-//                        " cone", Toast.LENGTH_SHORT);
-//        toast2.show();
-        peticion getIm = new peticion();
-        getIm.execute("");
-//        try {
-//            funGET();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
+        Log.d("++", "onCreate: test ********************");
+        peticion getIm = new peticion(this);
+        getIm.execute("http://192.168.1.76:3000/imagen1");
+        WebView myWebView = (WebView) findViewById(R.id.webView);
+        final WebSettings ajustesVisorWeb = myWebView.getSettings();
+        ajustesVisorWeb.setJavaScriptEnabled(true);
+        myWebView.loadUrl("https://www.google.com.mx/maps");
 //        WebView myWebView = (WebView) findViewById(R.id.webView);
 //        myWebView.loadUrl("http://www.google.com");
     }
-    public void funGET() throws IOException {
-        ConnectivityManager connMgr = (ConnectivityManager)
-                getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-        if (networkInfo != null && networkInfo.isConnected()) {
-            URL url = new URL("http://192.168.1.76:3000/");
-            HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-            Log.d("d","Conexion"+ urlConnection.toString());
-            try {
-                InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                Toast toast2 =
-                        Toast.makeText(getApplicationContext(),
-                                in.toString()+" cone", Toast.LENGTH_SHORT);
-                toast2.show();
-            }
-            catch (Exception e){
-                Toast toast2 =
-                        Toast.makeText(getApplicationContext(),
-                                "error"+e.getMessage(), Toast.LENGTH_SHORT);
-                toast2.show();
-
-            }
-            finally {
-                urlConnection.disconnect();
-            }
-        } else {
-
-        }
-
-    }
-    public void petGET() throws Exception {
-        URL url = null;
-        InputStream in = null;
-        try {
-            url = new URL("http://192.168.1.76:3000/");
-            HttpURLConnection urlConnection = null;
-            urlConnection = (HttpURLConnection) url.openConnection();
-            in = new BufferedInputStream(urlConnection.getInputStream());
-
-            Log.d("d--------------------",in.toString());
-            urlConnection.disconnect();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        Toast toast2 =
-                Toast.makeText(getApplicationContext(),
-                        "res---------"+in.toString(), Toast.LENGTH_LONG);
-        toast2.show();
-    }
 }
 
-class peticion extends AsyncTask<String, Integer, Void> {
+class peticion extends AsyncTask<String, Void, ByteArrayOutputStream> {
+    WeakReference<Activity> mActivity;
+    public peticion( Activity activity ) {
+        super();
+        mActivity = new WeakReference<Activity>( activity );//Del principal
+    }
 
-
-    public Void doInBackground(String... exten) {
-        URL url = null;
-        InputStream in = null;
+    @Override
+    public ByteArrayOutputStream doInBackground(String... exten) {
+        Log.d("d--------------------","****************"+exten[0]);
+        String response = "";
+        URL url;
+        HttpURLConnection urlConnection = null;
+        StringBuilder sb = new StringBuilder();
+        ByteArrayOutputStream baos =  new ByteArrayOutputStream();
         try {
-            url = new URL("http://192.168.1.76:3000/");
-            HttpURLConnection urlConnection = null;
+            url = new URL(exten[0]);
             urlConnection = (HttpURLConnection) url.openConnection();
-            in = new BufferedInputStream(urlConnection.getInputStream());
-            Log.d("d--------------------",in.toString()+"-----"+urlConnection);
-            urlConnection.disconnect();
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            ByteArrayInputStream op;
+            InputStream in = urlConnection.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
 
-        return null;
+//            String line;
+//            while ((line = reader.readLine()) != null) {
+//                sb.append(line + "\n");
+//                Log.d("Recibiendo",line);
+//            }
+
+//            InputStreamReader isw = new InputStreamReader(in);
+            int data = reader.read();
+            while (data != -1) {
+                byte current = (byte) data;
+                baos.write(current);
+                data = reader.read();
+//                Log.d("T", "+++++++++++++++++++++"+current);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d("Exception on request",e.getMessage());
+        } finally {
+            if (urlConnection != null) {
+                urlConnection.disconnect();
+            }
+            Log.d("Respuesta","Descarga Completada");
+            Log.d("img",sb.toString());
+        }
+        return baos;
     }
 
     public void onProgressUpdate(Integer... progress) {
 
     }
-
-
-    public void onPostExecute(Long result) {
-
+    @Override
+    public void onPostExecute(ByteArrayOutputStream res) {
+        super.onPostExecute(res);
+        Activity act = mActivity.get();
+        try{
+            byte []  base64Content = res.toByteArray();
+            byte[] bytes = Base64.decode(base64Content, Base64.DEFAULT);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            ImageView img = act.findViewById(R.id.imageView2);
+            img.setImageBitmap(bitmap);
+//            BitmapFactory.Options options = new BitmapFactory.Options();
+//            Bitmap image = BitmapFactory.decodeByteArray(encodeByte, 0, encodeByte.length, options);
+//            image = Bitmap.createScaledBitmap(image, img.getWidth(), img.getHeight(), false);
+//            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//            image.compress(Bitmap.CompressFormat.PNG, 100, baos);
+//            Log.d("de control",res.charAt(0)+""+res.charAt(79)+""+ res.charAt(189));
+//            Log.d("medidas img", img.getWidth()+""+img.getHeight());
+//            byte[] b = baos.toByteArray();
+//            System.gc();
+//            byte[] decodedString = Base64.decode(Base64.encodeToString(b, Base64.NO_WRAP), Base64.DEFAULT);
+//            Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+//            img.setImageBitmap(decodedByte);
+        }
+        catch (Exception e){
+            Log.d("exception", e.getMessage());
+        }
+        if( act != null ) {
+            Log.d("ex","ff");
+        } else {
+            Log.d("err", "onPostExecute: error");
+        }
     }
 }
