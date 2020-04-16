@@ -12,58 +12,70 @@ import java.lang.ref.WeakReference;
 import java.net.*;
 
 public class MainActivity extends AppCompatActivity {
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Log.d("++", "onCreate: test ********************");
         peticion getIm = new peticion(this);
-        getIm.execute("http://192.168.1.76:3000/imagen1");
+        getIm.execute("http://192.168.1.76:3000/");
+
         WebView myWebView = (WebView) findViewById(R.id.webView);
         final WebSettings ajustesVisorWeb = myWebView.getSettings();
         ajustesVisorWeb.setJavaScriptEnabled(true);
         myWebView.loadUrl("https://www.google.com.mx/maps");
-//        WebView myWebView = (WebView) findViewById(R.id.webView);
-//        myWebView.loadUrl("http://www.google.com");
     }
 }
 
 class peticion extends AsyncTask<String, Void, ByteArrayOutputStream> {
-    WeakReference<Activity> mActivity;
-    public peticion( Activity activity ) {
+    private WeakReference<Activity> mActivity;
+    private byte [][] imagenes;
+    private int numImagenes;
+    peticion(Activity activity) {
         super();
         mActivity = new WeakReference<Activity>( activity );//Del principal
     }
 
     @Override
     public ByteArrayOutputStream doInBackground(String... exten) {
-        Log.d("d--------------------","****************"+exten[0]);
-        String response = "";
+        Log.d("d--------------------","---------------"+exten[0]);
         URL url;
         HttpURLConnection urlConnection = null;
         StringBuilder sb = new StringBuilder();
-        ByteArrayOutputStream baos =  new ByteArrayOutputStream();
+        int i=0;
+        ByteArrayOutputStream baos =  new ByteArrayOutputStream();//imagen1
         try {
-            url = new URL(exten[0]);
-            urlConnection = (HttpURLConnection) url.openConnection();
-            ByteArrayInputStream op;
-            InputStream in = urlConnection.getInputStream();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+                url = new URL(exten[0]+"imagen"+i);
+                Log.d("Url-------------->",url.toString());
+                urlConnection = (HttpURLConnection) url.openConnection();
+                InputStream in = urlConnection.getInputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                    Log.d("Recibiendo",line);
+                }
 
-//            String line;
-//            while ((line = reader.readLine()) != null) {
-//                sb.append(line + "\n");
-//                Log.d("Recibiendo",line);
-//            }
-
-//            InputStreamReader isw = new InputStreamReader(in);
-            int data = reader.read();
-            while (data != -1) {
-                byte current = (byte) data;
-                baos.write(current);
-                data = reader.read();
-//                Log.d("T", "+++++++++++++++++++++"+current);
+            numImagenes = Integer.parseInt(sb.toString());
+            //Leer el número de imagenes
+            i++;
+            imagenes= new byte[numImagenes][];
+            //Leer las imagenes
+            for(int b=0; b<numImagenes;b++){
+                baos =  new ByteArrayOutputStream();
+                url = new URL(exten[0]+"imagen"+i);
+                Log.d("Url-------------->",url.toString());
+                urlConnection = (HttpURLConnection) url.openConnection();
+                in = urlConnection.getInputStream();
+                reader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+                int data = reader.read();
+                while (data != -1) {
+                    byte current = (byte) data;
+                    baos.write(current);
+                    data = reader.read();
+                }
+                imagenes[b]= new byte[baos.toByteArray().length];
+                imagenes[b] = baos.toByteArray(); Log.d("Descarga"+i,"listo");
+                i++;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -73,7 +85,7 @@ class peticion extends AsyncTask<String, Void, ByteArrayOutputStream> {
                 urlConnection.disconnect();
             }
             Log.d("Respuesta","Descarga Completada");
-            Log.d("img",sb.toString());
+//            Log.d("img",sb.toString());
         }
         return baos;
     }
@@ -86,23 +98,17 @@ class peticion extends AsyncTask<String, Void, ByteArrayOutputStream> {
         super.onPostExecute(res);
         Activity act = mActivity.get();
         try{
-            byte []  base64Content = res.toByteArray();
-            byte[] bytes = Base64.decode(base64Content, Base64.DEFAULT);
+//            byte []  base64Content = res.toByteArray();
+            byte[] bytes = Base64.decode(imagenes[0], Base64.DEFAULT);
             Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-            ImageView img = act.findViewById(R.id.imageView2);
-            img.setImageBitmap(bitmap);
-//            BitmapFactory.Options options = new BitmapFactory.Options();
-//            Bitmap image = BitmapFactory.decodeByteArray(encodeByte, 0, encodeByte.length, options);
-//            image = Bitmap.createScaledBitmap(image, img.getWidth(), img.getHeight(), false);
-//            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//            image.compress(Bitmap.CompressFormat.PNG, 100, baos);
-//            Log.d("de control",res.charAt(0)+""+res.charAt(79)+""+ res.charAt(189));
-//            Log.d("medidas img", img.getWidth()+""+img.getHeight());
-//            byte[] b = baos.toByteArray();
-//            System.gc();
-//            byte[] decodedString = Base64.decode(Base64.encodeToString(b, Base64.NO_WRAP), Base64.DEFAULT);
-//            Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-//            img.setImageBitmap(decodedByte);
+            ImageView img = act.findViewById(R.id.imageView);
+            img.setImageBitmap(Bitmap.createScaledBitmap(bitmap, img.getWidth(), img.getHeight(), false));
+            Log.d("Realizado","Listo");
+
+            bytes = Base64.decode(imagenes[1],Base64.DEFAULT);
+            bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            img = act.findViewById(R.id.imageView2);
+            img.setImageBitmap(Bitmap.createScaledBitmap(bitmap, img.getWidth(), img.getHeight(), false));
         }
         catch (Exception e){
             Log.d("exception", e.getMessage());
